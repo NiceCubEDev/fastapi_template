@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    container_name: fastapi-app
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_HOST: db
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: fastapi-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fastapi_template}
+      POSTGRES_USER: ${POSTGRES_USER:-fastapi_template}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fastapi_template}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fastapi_template} -d ${POSTGRES_DB:-fastapi_template}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:
